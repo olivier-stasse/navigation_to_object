@@ -20,6 +20,7 @@
     <depend package="geometry_msgs"/>
     <depend package="sensor_msgs"/>
     <depend package="tf"/>
+    <depend package="message_filters"/>
 
     <depend package="dynamic_graph_bridge"/>
 </package>
