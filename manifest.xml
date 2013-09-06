@@ -1,14 +1,25 @@
 <package>
-  <description brief="navigation_to_object">
+  <description brief="Navigation to object demo">
 
-     navigation_to_object
+    HRP-2 walks toward an object through visual servoing and velocity
+    based pattern generator controlled through the Stack of Tasks
+    controller.
 
   </description>
-  <author>Thomas Moulard</author>
+  <author>Damien Petit</author>
   <license>BSD</license>
   <review status="unreviewed" notes=""/>
-  <url>http://ros.org/wiki/navigation_to_object</url>
+  <url>http://www.github.com/jrl-umi3218/navigation_to_object</url>
 
+    <rosdep name="boost"/>
+
+    <depend package="roscpp" />
+    <depend package="rospy" />
+    <depend package="std_msgs"/>
+    <depend package="std_srvs"/>
+    <depend package="geometry_msgs"/>
+    <depend package="sensor_msgs"/>
+    <depend package="tf"/>
+
+    <depend package="dynamic_graph_bridge"/>
 </package>
-
-
