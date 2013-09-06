@@ -1,0 +1,22 @@
+<!-- -*- xml -*-
+
+This test checks that the synchornized behaves properly.
+
+It relies on the bag file located in bag/force-imu.bag
+
+  -->
+<launch>
+  <!-- Launch the synchronizer -->
+  <node pkg="navigation_to_object" type="synchronizer" name="synchronizer">
+    <remap from="force_left_foot" to="/force_0"/>
+    <remap from="force_right_foot" to="/force_1"/>
+  </node>
+
+  <!-- Launch the vref node -->
+  <node pkg="navigation_to_object" type="vref" name="vref" />
+
+  <!-- Initialize the SoT -->
+  <node pkg="dynamic_graph_bridge" type="run_command" name="init_sot"
+	args="$(navigation_to_object)/scripts/sot_init.py"
+	/>
+</launch>

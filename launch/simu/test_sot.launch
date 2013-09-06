@@ -1,0 +1,19 @@
+<!-- -*- xml -*-
+
+This test checks that the synchornized behaves properly.
+
+It relies on the bag file located in bag/force-imu.bag
+
+  -->
+<launch>
+  <param name="use_sim_time" value="true" />
+
+  <!-- Replay force and imu data. -->
+  <node pkg="rostopic" type="rostopic" name="rostopic-object-position"
+	args="pub -r 40 /pattern-generator/velocity geometry_msgs/Vector3Stamped '{header: auto, x: 0.1, y: 0, z: 0}'"/>
+
+  <!-- Initialize the SoT -->
+  <node pkg="dynamic_graph_bridge" type="run_command" name="init_sot"
+	args="$(navigation_to_object)/scripts/sot_init.py"
+	/>
+</launch>

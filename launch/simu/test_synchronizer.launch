@@ -1,0 +1,33 @@
+<!-- -*- xml -*-
+
+This test checks that the synchornized behaves properly.
+
+It relies on the bag file located in bag/force-imu.bag
+
+  -->
+<launch>
+  <param name="use_sim_time" value="true" />
+
+  <!-- Replay force and imu data. -->
+  <node pkg="rosbag" type="rosbag" name="rosbag-imu-force"
+	args="play --clock -l
+	      $(find navigation_to_object)/bag/force-imu.bag"/>
+
+  <!-- Replay force and imu data. -->
+  <node pkg="rostopic" type="rostopic" name="rostopic-object-position"
+	args="pub -r 40 /object_position geometry_msgs/PoseStamped '{header: {seq: auto, stamp: now, frame_id: '/xtion_rgb_optical'}, pose: {position: {x: 0, y: 1, z: 2}, orientation: {x: 0, y: 0, z: 0, w: 1}}}'"/>
+
+  <!-- Launch the synchronizer -->
+  <node pkg="navigation_to_object" type="synchronizer" name="synchronizer">
+    <remap from="force_left_foot" to="/force_0"/>
+    <remap from="force_right_foot" to="/force_1"/>
+  </node>
+
+  <!--
+      FIXME: write test node
+      http://wiki.ros.org/roslaunch/XML/test
+
+test_synchronizer
+checks that the output messages of synchronizer during this test are valid (i.e. frequency, time is correct)
+  -->
+</launch>
