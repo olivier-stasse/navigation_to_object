@@ -30,4 +30,4 @@ rosbuild_add_executable(synchronizer src/synchronizer/synchronizer.cc)
 rosbuild_link_boost(synchronizer signals)
 
 rosbuild_add_executable(vref src/vref/vref.cc)
-#target_link_libraries(example ${PROJECT_NAME})
+rosbuild_link_boost(vref signals)
