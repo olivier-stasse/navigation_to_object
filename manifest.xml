@@ -1,0 +1,14 @@
+<package>
+  <description brief="navigation_to_object">
+
+     navigation_to_object
+
+  </description>
+  <author>Thomas Moulard</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/navigation_to_object</url>
+
+</package>
+
+
