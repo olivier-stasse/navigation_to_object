@@ -1,16 +1,10 @@
-# Import ROS
+from dynamic_graph import plug
 from dynamic_graph.ros import *
+from dynamic_graph.sot.application.velocity.precomputed_tasks import initialize
+solver = initialize (robot)
+from dynamic_graph.sot.pattern_generator.walking import CreateEverythingForPG , walkAndrei
 
-#FIXME: initialize the pattern-generator
+CreateEverythingForPG(robot, solver)
 
-# Create ros bindings
 ros = Ros(robot)
-
-# Subscribe to reference velocity
-ros.rosImport.add('vector3Stamped', 'vref', '/pattern-generator/velocity')
-
-# Plug into the pattern generator.
-plug(ros.rosImport.vref, pg.vref)
-
-# Start the pattern-generator.
-pg.start()
+ros.rosExport.add('vector3Stamped', 'vref', '/pattern_generator/velocity')

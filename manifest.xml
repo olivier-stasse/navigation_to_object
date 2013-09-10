@@ -23,4 +23,5 @@
     <depend package="message_filters"/>
 
     <depend package="dynamic_graph_bridge"/>
+    <depend package="openhrp_bridge_msgs"/>
 </package>

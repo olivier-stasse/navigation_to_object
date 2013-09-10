@@ -1,0 +1,89 @@
+#!/usr/bin/env python
+import roslib; roslib.load_manifest("navigation_to_object")
+import rospy
+
+import roslib.packages
+
+from dynamic_graph_bridge.srv import *
+from openhrp_bridge_msgs.srv import *
+from std_srvs.srv import *
+
+import time
+import sys
+
+rospy.init_node('launcher', log_level=rospy.DEBUG)
+
+simulation = rospy.get_param('~simulation', True)
+
+pkgLocation = roslib.packages.get_pkg_dir('navigation_to_object')
+sotScriptsLocation = pkgLocation + "/scripts/"
+
+try:
+    if not simulation:
+        rospy.loginfo("restarting the controllers")
+        rospy.wait_for_service("restart_controller")
+        try:
+            restartControllerClient = rospy.ServiceProxy(
+                'restart_controller', Empty)
+            restartControllerClient()
+        except:
+            pass
+        rospy.loginfo("...restarting...")
+
+        rospy.loginfo("waiting for switch_servo")
+        rospy.wait_for_service("switch_servo")
+        rospy.loginfo("...ok")
+
+        rospy.loginfo("switching to servo on (can take time)")
+        ok = False
+        while not ok:
+            try:
+                switchServoClient = rospy.ServiceProxy(
+                    'switch_servo', SwitchServo)
+                answer = switchServoClient(True, "all")
+                rospy.logdebug(answer)
+                ok = True
+            except:
+                time.sleep(1)
+                rospy.loginfo("...ok")
+
+    rospy.loginfo("waiting for run_command")
+    rospy.wait_for_service("run_command")
+    rospy.loginfo("...ok")
+
+    # Create clients.
+    runCommandClient = rospy.ServiceProxy('run_command', RunCommand)
+    runCommandStartDynamicGraph = rospy.ServiceProxy(
+        'start_dynamic_graph', Empty)
+
+    # Read scripts.
+    sotInitCode = open(
+        sotScriptsLocation + "sot_init.py", "r").read().split("\n")
+    sotStartCode = open(
+        sotScriptsLocation + "sot_start.py", "r").read().split("\n")
+
+    rospy.loginfo("Initialize the graph:")
+    rospy.loginfo(sotInitCode)
+    for line in sotInitCode:
+        if line != '' and line[0] != '#':
+            answer = runCommandClient(str(line))
+            rospy.logdebug(answer)
+    rospy.loginfo("...done")
+
+    rospy.loginfo("Start the controller")
+    try:
+        runCommandStartDynamicGraph()
+    except:
+        pass
+    rospy.loginfo("...done")
+
+    rospy.loginfo("Start the demo")
+    rospy.loginfo(sotStartCode)
+    for line in sotStartCode:
+        if line != '' and line[0] != '#':
+            answer = runCommandClient(str(line))
+            rospy.logdebug(answer)
+    rospy.loginfo("...done")
+
+except rospy.ServiceException, e:
+    rospy.logerr("Service call failed: %s" % e)
