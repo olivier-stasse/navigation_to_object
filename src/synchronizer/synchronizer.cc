@@ -10,6 +10,8 @@
 #include <message_filters/synchronizer.h>
 #include <message_filters/sync_policies/approximate_time.h>
 
+#include <ros/console.h>
+
 class Synchronizer
 {
 public:
@@ -29,7 +31,12 @@ public:
       forceRightSubscriber_ (nodeHandle_, "force_right_foot", queueSize_),
       objectPositionSubscriber_ (nodeHandle_, "object_position", queueSize_),
       synchronizer_ (syncPolicy_t(queueSize_)),
-      objectPositionFilteredPublisher_ ()
+      objectPositionFilteredPublisher_ (),
+      floorLeftFoot_ (true),
+      floorRightFoot_ (true),
+      footInAirThreshold_ (100.0),
+      footOnFloorThreshold_ (400.0)
+    
   {
     // ApproximateTime takes a queue size as its constructor argument,
     // hence syncPolicy_t(10)
@@ -67,10 +74,55 @@ public:
 		 const geometry_msgs::WrenchStampedConstPtr& forceRightFoot,
 		 const geometry_msgs::PoseStampedConstPtr& objectPosition)
   {
-    bool isMessageOk = true;
+    bool isMessageOk = false;
 
-    //FIXME: do something smart here.
+    //publish the message if the left foot is leaving the floor
+    if(floorLeftFoot_ == true) //left foot in contact with the floor
+    {
+        if(forceLeftFoot->wrench.force.z < footInAirThreshold_)
+        {
+            floorLeftFoot_ = false; //the foot is in the air
+            isMessageOk = true;
+        }
+        else
+        {
+        }
+    }
+    else
+    {
+        if(forceLeftFoot->wrench.force.z > footOnFloorThreshold_)
+        {
+            floorLeftFoot_ = true; //the foot is on the floor
+        }
+        else
+        {
+        }
+    }
 
+    //publish the message if the right foot is leaving the floor
+    if(floorRightFoot_ == true) //right foot in contact with the floor
+    {
+        if(forceRightFoot->wrench.force.z < footInAirThreshold_)
+        {
+            floorRightFoot_ = false; //the foot is in the air
+            isMessageOk = true;
+        }
+        else
+        {
+        }
+    }
+    else
+    {
+        if(forceRightFoot->wrench.force.z > footOnFloorThreshold_)
+        {
+            floorRightFoot_ = true; //the foot is on the floor
+        }
+        else
+        {
+        }
+    }
+
+    //publish the message when one foot leave the floor
     if (isMessageOk)
       objectPositionFilteredPublisher_.publish (objectPosition);
   }
@@ -88,6 +140,13 @@ private:
   message_filters::Synchronizer<syncPolicy_t> synchronizer_;
 
   ros::Publisher objectPositionFilteredPublisher_;
+
+  bool floorLeftFoot_; //true if the left foot is in contact with the floor
+  bool floorRightFoot_; //true if the right foot is in contact with the floor
+
+  double footInAirThreshold_; //below this value we consider the foot in the air
+  double footOnFloorThreshold_; //above this value we consider in contact with the floor
+
 };
 
 int main(int argc, char **argv)
