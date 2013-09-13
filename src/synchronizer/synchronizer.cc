@@ -52,7 +52,7 @@ public:
 
     objectPositionFilteredPublisher_ =
       nodeHandle_.advertise<geometry_msgs::PoseStamped>
-      ("object_position_filtered", queueSize_);
+      ("object_position_filtered", queueSize_, true);
   }
 
   ~Synchronizer ()
