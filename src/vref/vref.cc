@@ -4,6 +4,7 @@
 
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/Vector3Stamped.h>
+#include <std_msgs/Int8.h>
 
 #include <math.h>
 
@@ -22,20 +23,32 @@ public:
       kRotInitThreshMaxDeg_(15.0),//degree param
       rotInitMaxVel_(0.2),//rad/s param
       kRotInit_(0.0),//1/s
-      vRefRotInitDeadZone_(5.0)//deg param
+      vRefRotInitDeadZone_(5.0),//deg param
+      commandMode_(0)
   {
     typedef boost::function<void (const geometry_msgs::PoseStampedConstPtr&)>
       callback_t;
+
+    typedef boost::function<void (const std_msgs::Int8ConstPtr&)>
+      callbackBciCommand_t;
 
     kRotInit_ = rotInitMaxVel_*180/(kRotInitThreshMaxDeg_*M_PI);
 
     callback_t callback =
       boost::bind (&Vref::callback, this, _1);
 
+    callbackBciCommand_t callbackBciCommand =
+      boost::bind (&Vref::callbackBciCommand, this, _1);
+
     objectPositionFilteredSubscriber_ =
       nodeHandle_.subscribe
       ("object_position_filtered", queueSize_,
        callback);
+
+    bciCommandSubscriber_ =
+      nodeHandle_.subscribe
+      ("bci_command", queueSize_,
+       callbackBciCommand);
 
     vrefPublisher_ =
       nodeHandle_.advertise<geometry_msgs::Vector3Stamped>
@@ -105,7 +118,7 @@ public:
     computeRotationToObjectRef( objectPosition, rotationToObjectRef_);
     computeDistanceToObjectRef( objectPosition, distanceToObjectRef_);
 
-// add the bci _command topic input
+// check the control mode set by the callback bci _command
 
 
 //copy and send the velocity command
@@ -120,6 +133,17 @@ public:
     vrefPublisher_.publish (vref);
   }
 
+  void callbackBciCommand(const std_msgs::Int8ConstPtr& bciCommand)
+  {
+     //update the mode of control
+     //commandMode:
+     //0 idle mode
+     //1 go forward
+     //2 turn right
+     //4 turn left
+     //5 start assistive control
+  }
+
 private:
   ros::NodeHandle nodeHandle_;
   ros::NodeHandle nodeHandlePrivate_;
@@ -127,6 +151,7 @@ private:
   int queueSize_;
 
   ros::Subscriber objectPositionFilteredSubscriber_;
+  ros::Subscriber bciCommandSubscriber_;
   ros::Publisher vrefPublisher_;
 
   double rotationToObjectRef_;
@@ -138,6 +163,8 @@ private:
   double rotInitMaxVel_;
   double kRotInit_;
   double vRefRotInitDeadZone_;
+
+  int commandMode_;
 
   //variable used for the circle around motion
 
