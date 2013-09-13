@@ -17,10 +17,12 @@ public:
       objectPositionFilteredSubscriber_ (),
       vrefPublisher_ (),
       rotationToObjectRef_(0.0),//rad
-      kRotInitThreshMaxDeg_(15.0),//degree
-      rotInitMaxVel_(0.2),//rad/s
+      distanceToObjectRef_(0.0),//m
+      minDistanceToObjectRef_(0.4),//m param
+      kRotInitThreshMaxDeg_(15.0),//degree param
+      rotInitMaxVel_(0.2),//rad/s param
       kRotInit_(0.0),//1/s
-      vRefRotInitDeadZone_(5.0)//deg
+      vRefRotInitDeadZone_(5.0)//deg param
   {
     typedef boost::function<void (const geometry_msgs::PoseStampedConstPtr&)>
       callback_t;
@@ -56,7 +58,13 @@ public:
 
   void computeRotationToObjectRef(const geometry_msgs::PoseStampedConstPtr& objectPosition, double& rotationToObjectRef)
   {
-    rotationToObjectRef=(atan2( objectPosition->pose.position.y, objectPosition->pose.position.x));
+    rotationToObjectRef = atan2( objectPosition->pose.position.y, objectPosition->pose.position.x);
+  }
+
+  void computeDistanceToObjectRef(const geometry_msgs::PoseStampedConstPtr& objectPosition, double& distanceToObjectRef)
+  {
+    distanceToObjectRef = sqrt(objectPosition->pose.position.y*objectPosition->pose.position.y+\
+                               objectPosition->pose.position.x*objectPosition->pose.position.x);
   }
 
   void computeVRefRotInit(const double& rotationToObjectRef, double& vRefRot)
@@ -88,15 +96,19 @@ public:
     {
         vrefRotTemp = 0.0;
     } 
-
     vRefRot = vrefRotTemp;
   }
 
 //objectPosition is the pose in the waist of the robot
   void callback (const geometry_msgs::PoseStampedConstPtr& objectPosition)
   {
-    computeRotationToObjectRef( objectPosition , rotationToObjectRef_);
+    computeRotationToObjectRef( objectPosition, rotationToObjectRef_);
+    computeDistanceToObjectRef( objectPosition, distanceToObjectRef_);
 
+// add the bci _command topic input
+
+
+//copy and send the velocity command
     geometry_msgs::Vector3StampedPtr vref =
       boost::make_shared<geometry_msgs::Vector3Stamped> ();
 
@@ -118,6 +130,8 @@ private:
   ros::Publisher vrefPublisher_;
 
   double rotationToObjectRef_;
+  double distanceToObjectRef_;
+  double minDistanceToObjectRef_;
 
   //variables used in the realignment initial motion
   double kRotInitThreshMaxDeg_;
