@@ -24,7 +24,8 @@ public:
       rotInitMaxVel_(0.2),//rad/s param
       kRotInit_(0.0),//1/s
       vRefRotInitDeadZone_(5.0),//deg param
-      commandMode_(0)
+      commandMode_(0),
+      objectPose_()
   {
     typedef boost::function<void (const geometry_msgs::PoseStampedConstPtr&)>
       callback_t;
@@ -69,15 +70,15 @@ public:
       }
   }
 
-  void computeRotationToObjectRef(const geometry_msgs::PoseStampedConstPtr& objectPosition, double& rotationToObjectRef)
+  void computeRotationToObjectRef(const geometry_msgs::PoseStamped& objectPosition, double& rotationToObjectRef)
   {
-    rotationToObjectRef = atan2( objectPosition->pose.position.y, objectPosition->pose.position.x);
+    rotationToObjectRef = atan2( objectPosition.pose.position.y, objectPosition.pose.position.x);
   }
 
-  void computeDistanceToObjectRef(const geometry_msgs::PoseStampedConstPtr& objectPosition, double& distanceToObjectRef)
+  void computeDistanceToObjectRef(const geometry_msgs::PoseStamped& objectPosition, double& distanceToObjectRef)
   {
-    distanceToObjectRef = sqrt(objectPosition->pose.position.y*objectPosition->pose.position.y+\
-                               objectPosition->pose.position.x*objectPosition->pose.position.x);
+    distanceToObjectRef = sqrt(objectPosition.pose.position.y*objectPosition.pose.position.y+\
+                               objectPosition.pose.position.x*objectPosition.pose.position.x);
   }
 
   void computeVRefRotInit(const double& rotationToObjectRef, double& vRefRot)
@@ -112,36 +113,112 @@ public:
     vRefRot = vrefRotTemp;
   }
 
+
+
 //objectPosition is the pose in the waist of the robot
   void callback (const geometry_msgs::PoseStampedConstPtr& objectPosition)
   {
-    computeRotationToObjectRef( objectPosition, rotationToObjectRef_);
-    computeDistanceToObjectRef( objectPosition, distanceToObjectRef_);
+//update the object position
+     objectPose_ = *objectPosition;
+  }
 
-// check the control mode set by the callback bci _command
+  void callbackBciCommand(const std_msgs::Int8ConstPtr& bciCommand)
+  {
 
+//FIXME send the idle walk command or 
+//the last command or 
+//approximate the position of the object thanks to the last command sent
+//and send the appropriate command (with the guessed object position)
+ 
+    int bciCommandReceived = 0;
+    bciCommandReceived = int(bciCommand->data);
+     //update the mode of control
+     //commandMode:
+     //0 idle walk
+     //1 walk forward
+     //2 circle around by the right
+     //4 circle around by the left
+     //5 start/stop assistive navigation
+
+    computeRotationToObjectRef( objectPose_, rotationToObjectRef_);
+    computeDistanceToObjectRef( objectPose_, distanceToObjectRef_);
 
 //copy and send the velocity command
     geometry_msgs::Vector3StampedPtr vref =
       boost::make_shared<geometry_msgs::Vector3Stamped> ();
 
-    vref->header = objectPosition->header;
-    vref->vector.x = 0.1;
-    vref->vector.y = 0.;
-    vref->vector.z = 0.;
+// check the control mode set by the callback bci _command
+    switch(bciCommandReceived)
+    {
+        case 0:
+        {    
+            //idle walk with (with orientation correction?)
+            double vrefRotComputed = 0.0;
+            computeVRefRotInit(rotationToObjectRef_, vrefRotComputed);
+
+            vref->header = objectPose_.header;
+            vref->vector.x = 0.001;
+            vref->vector.y = 0.;
+            vref->vector.z = vrefRotComputed;
+            break;
+        }
+        case 1:
+        {
+        //walk forward (with orientation corection?) and stop at minDistanceToObjectRef_
+            double vrefRotComputed = 0.0;
+            computeVRefRotInit(rotationToObjectRef_, vrefRotComputed);
+            computeDistanceToObjectRef( objectPose_, distanceToObjectRef_);
+
+            if(distanceToObjectRef_ > minDistanceToObjectRef_)
+            {
+                vref->header = objectPose_.header;
+                vref->vector.x = 0.1;
+                vref->vector.y = 0.;
+                vref->vector.z = vrefRotComputed;
+            }
+            else
+            {
+                vref->header = objectPose_.header;
+                vref->vector.x = 0.001;
+                vref->vector.y = 0.;
+                vref->vector.z = vrefRotComputed;
+            }
+ 
+            break;
+        }
+        case 2:
+        {
+        //circle around by the ritght
+            break;
+        }
+        case 3:
+        {
+        //nothing to do
+            break;
+        }
+        case 4:
+        //circle around by the left
+            break;
+        case 5:
+        {
+        //start/stop assistive navigation
+            break;
+        }
+        default:
+        {
+        //idle walk with (with orientation correction?)
+            double vrefRotComputed = 0.0;
+            computeVRefRotInit(rotationToObjectRef_, vrefRotComputed);
+
+            vref->header = objectPose_.header;
+            vref->vector.x = 0.001;
+            vref->vector.y = 0.;
+            vref->vector.z = vrefRotComputed;
+            break;
+        }
+    }
 
     vrefPublisher_.publish (vref);
-  }
-
-  void callbackBciCommand(const std_msgs::Int8ConstPtr& bciCommand)
-  {
-     //update the mode of control
-     //commandMode:
-     //0 idle mode
-     //1 go forward
-     //2 turn right
-     //4 turn left
-     //5 start assistive control
   }
 
 private:
@@ -165,6 +242,8 @@ private:
   double vRefRotInitDeadZone_;
 
   int commandMode_;
+
+  geometry_msgs::PoseStamped objectPose_;
 
   //variable used for the circle around motion
 
