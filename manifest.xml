@@ -12,6 +12,7 @@
   <url>http://www.github.com/jrl-umi3218/navigation_to_object</url>
 
     <rosdep name="boost"/>
+    <rosdep name="eigen"/>
 
     <depend package="roscpp" />
     <depend package="rospy" />

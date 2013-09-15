@@ -7,6 +7,7 @@
 #include <std_msgs/Int8.h>
 
 #include <math.h>
+#include <Eigen/Geometry>
 
 class Vref
 {
@@ -72,6 +73,7 @@ public:
 
   void computeRotationToObjectRef(const geometry_msgs::PoseStamped& objectPosition, double& rotationToObjectRef)
   {
+
     rotationToObjectRef = atan2( objectPosition.pose.position.y, objectPosition.pose.position.x);
   }
 
@@ -118,8 +120,70 @@ public:
 //objectPosition is the pose in the waist of the robot
   void callback (const geometry_msgs::PoseStampedConstPtr& objectPosition)
   {
+        Eigen::Quaterniond objectPositionInCamQuat(objectPosition->pose.orientation.w,
+                                           objectPosition->pose.orientation.x,
+                                           objectPosition->pose.orientation.y,
+                                           objectPosition->pose.orientation.z);
+    
+        Eigen::Matrix3d objectPositionRotInCam;
+
+        objectPositionRotInCam = objectPositionInCamQuat.toRotationMatrix();
+
+        Eigen::Matrix4d objectPositionInCam;
+
+//copy the rotation part
+        for(int i = 0; i < 3; i++)
+        {
+            for(int j  = 0; j < 3; j++ )
+            {
+                objectPositionInCam(i,j)= objectPositionRotInCam.coeff(i,j);
+            }
+        }
+
+//copy the translation part
+
+        objectPositionInCam(0,3) = objectPosition->pose.position.x;
+        objectPositionInCam(1,3) = objectPosition->pose.position.y;
+        objectPositionInCam(2,3) = objectPosition->pose.position.z;
+        objectPositionInCam(3,3) = 1;
+        objectPositionInCam(3,0) = 0;
+        objectPositionInCam(3,1) = 0;
+        objectPositionInCam(3,2) = 0;
+
+//head_to cam_xtion_rgb
+//[ -2.44122110e-02, -1.89231351e-01, 9.81629014e-01, 8.69229361e-02, 
+//  -9.99699354e-01, 2.36575282e-03, -2.44055502e-02, 1.49334883e-02, 
+//   2.29600375e-03, -9.81929660e-01, -1.89232215e-01, 1.08828329e-01, 
+//   0., 0., 0., 1. ]
+
+//change the reference from the xtion camera to the head
+        Eigen::Matrix4d tranformXtionRGBToHead;
+        tranformXtionRGBToHead << -2.44122110e-02, -1.89231351e-01, 9.81629014e-01, 8.69229361e-02,\
+                                  -9.99699354e-01, 2.36575282e-03, -2.44055502e-02, 1.49334883e-02,\
+                                   2.29600375e-03, -9.81929660e-01, -1.89232215e-01, 1.08828329e-01,\
+                                   0., 0., 0., 1.;
+
+//change the reference from the head to the waist
+        Eigen::Matrix4d tranformHeadToWaist;     
+        tranformHeadToWaist << 0.92106099400288488, -2.1800758211874719e-30, 0.38941834230865091, 0.02499999999999997,\
+                               2.0079828028645883e-30, 1.0, 8.4896151239399621e-31, -1.5715137206047549e-32,\
+                               -0.38941834230865091, 6.9383317455266251e-48, 0.92106099400288488, 0.64800000000000002,\
+                               0.0, 0.0, 0.0, 1.0;
+
+        Eigen::Matrix4d objectPositionInWaist;
+
+        objectPositionInWaist = tranformHeadToWaist * (tranformXtionRGBToHead * objectPositionInCam);
+//robot.geom.signal('head2').value
 //update the object position
-     objectPose_ = *objectPosition;
+//((0.92106099400288488, -2.1800758211874719e-30, 0.38941834230865091, 0.02499999999999997), (2.0079828028645883e-30, 1.0, 8.4896151239399621e-31, -1.5715137206047549e-32), (-0.38941834230865091, 6.9383317455266251e-48, 0.92106099400288488, 0.64800000000000002), (0.0, 0.0, 0.0, 1.0))
+
+//FIXME update the quaternion too
+
+        objectPose_.pose.position.x = objectPositionInWaist.coeff(0,3);
+        objectPose_.pose.position.y = objectPositionInWaist.coeff(1,3);
+        objectPose_.pose.position.z = objectPositionInWaist.coeff(2,3);
+    
+        objectPose_.header = objectPosition->header;
   }
 
   void callbackBciCommand(const std_msgs::Int8ConstPtr& bciCommand)
@@ -167,7 +231,6 @@ public:
         //walk forward (with orientation corection?) and stop at minDistanceToObjectRef_
             double vrefRotComputed = 0.0;
             computeVRefRotInit(rotationToObjectRef_, vrefRotComputed);
-            computeDistanceToObjectRef( objectPose_, distanceToObjectRef_);
 
             if(distanceToObjectRef_ > minDistanceToObjectRef_)
             {
@@ -189,6 +252,15 @@ public:
         case 2:
         {
         //circle around by the ritght
+                double alpha = 0.087; //rad
+                double dotAlpha = alpha/0.8; //rad/s 0.8 is th eperiod of 1 step
+                double dotY = distanceToObjectRef_*dotAlpha*sin(alpha-(M_PI/2));
+                double dotXForward = distanceToObjectRef_*dotAlpha*cos(alpha-(M_PI/2));
+
+                vref->header = objectPose_.header;
+                vref->vector.x = dotXForward;
+                vref->vector.y = dotY;
+                vref->vector.z = dotAlpha;
             break;
         }
         case 3:
@@ -197,8 +269,19 @@ public:
             break;
         }
         case 4:
+        {
         //circle around by the left
+                double alpha = -0.087; //rad
+                double dotAlpha = alpha/0.8; //rad/s 0.8 is th eperiod of 1 step
+                double dotY = distanceToObjectRef_*dotAlpha*sin(alpha-(M_PI/2));
+                double dotXForward = distanceToObjectRef_*dotAlpha*cos(alpha-(M_PI/2));
+
+                vref->header = objectPose_.header;
+                vref->vector.x = dotXForward;
+                vref->vector.y = dotY;
+                vref->vector.z = dotAlpha;
             break;
+        }
         case 5:
         {
         //start/stop assistive navigation

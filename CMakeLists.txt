@@ -26,6 +26,9 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 #target_link_libraries(${PROJECT_NAME} another_library)
 rosbuild_add_boost_directories()
 
+find_package(Eigen REQUIRED)
+include_directories(${Eigen_INCLUDE_DIRS})
+
 rosbuild_add_executable(synchronizer src/synchronizer/synchronizer.cc)
 rosbuild_link_boost(synchronizer signals)
 
