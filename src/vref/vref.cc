@@ -19,7 +19,7 @@ public:
       vrefPublisher_ (),
       rotationToObjectRef_(0.0),//rad
       distanceToObjectRef_(0.0),//m
-      minDistanceToObjectRef_(0.4),//m param
+      minDistanceToObjectRef_(0.7),//m param
       kRotInitThreshMaxDeg_(15.0),//degree param
       rotInitMaxVel_(0.2),//rad/s param
       kRotInit_(0.0),//1/s
